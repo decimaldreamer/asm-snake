@@ -5,6 +5,27 @@ ExitProcess PROTO, dwExitCode: DWORD
 INCLUDE Irvine32.inc
 
 .data
+; Renk sabitleri
+SNAKE_COLOR = lightGreen
+WALL_COLOR = white
+FOOD_COLOR = red
+TEXT_COLOR = yellow
+
+; Yem türleri
+FOOD_TYPE_NORMAL = 0
+FOOD_TYPE_FAST = 1
+FOOD_TYPE_SLOW = 2
+FOOD_TYPE_BONUS = 3
+
+; Yem sembolleri
+normalFood BYTE "O"
+fastFood BYTE "F"
+slowFood BYTE "S"
+bonusFood BYTE "B"
+
+; Yem türü ve süresi
+currentFoodType BYTE ?
+foodTimer DWORD 0
 
 xWall BYTE 52 DUP("#"), 0
 strScore BYTE "Skor: ", 0
@@ -31,6 +52,12 @@ lastInputChar BYTE ?
 
 strSpeed BYTE "Hız (1-hızlı, 2-orta, 3-yavaş): ", 0
 speed DWORD 0
+
+strGameOver BYTE "OYUN BİTTİ!", 0
+strFinalScore BYTE "Toplam Puan: ", 0
+strHighScore BYTE "En Yüksek Puan: ", 0
+strNewHighScore BYTE "Yeni Rekor!", 0
+highScore BYTE 0
 
 .code
 main PROC
@@ -196,5 +223,158 @@ died::
 exitgame::
     INVOKE ExitProcess, 0
 main ENDP
+
+; Renk ayarlama fonksiyonu
+SetColor PROC
+    push eax
+    mov eax, SNAKE_COLOR
+    call SetTextColor
+    pop eax
+    ret
+SetColor ENDP
+
+; Duvar rengini ayarlama
+SetWallColor PROC
+    push eax
+    mov eax, WALL_COLOR
+    call SetTextColor
+    pop eax
+    ret
+SetWallColor ENDP
+
+; Yem rengini ayarlama
+SetFoodColor PROC
+    push eax
+    mov eax, FOOD_COLOR
+    call SetTextColor
+    pop eax
+    ret
+SetFoodColor ENDP
+
+; Metin rengini ayarlama
+SetTextColor PROC
+    push eax
+    mov eax, TEXT_COLOR
+    call SetTextColor
+    pop eax
+    ret
+SetTextColor ENDP
+
+CreateRandomCoin PROC
+    call Randomize
+    mov eax, 4
+    call RandomRange
+    mov currentFoodType, al
+    
+    cmp al, FOOD_TYPE_NORMAL
+    je normal
+    cmp al, FOOD_TYPE_FAST
+    je fast
+    cmp al, FOOD_TYPE_SLOW
+    je slow
+    cmp al, FOOD_TYPE_BONUS
+    je bonus
+    
+normal:
+    mov al, normalFood
+    jmp done
+fast:
+    mov al, fastFood
+    jmp done
+slow:
+    mov al, slowFood
+    jmp done
+bonus:
+    mov al, bonusFood
+done:
+    ret
+CreateRandomCoin ENDP
+
+EatingCoin PROC
+    mov al, currentFoodType
+    cmp al, FOOD_TYPE_NORMAL
+    je normalFoodEaten
+    cmp al, FOOD_TYPE_FAST
+    je fastFoodEaten
+    cmp al, FOOD_TYPE_SLOW
+    je slowFoodEaten
+    cmp al, FOOD_TYPE_BONUS
+    je bonusFoodEaten
+    
+normalFoodEaten:
+    inc score
+    jmp done
+fastFoodEaten:
+    mov eax, speed
+    sub eax, 50
+    mov speed, eax
+    jmp done
+slowFoodEaten:
+    mov eax, speed
+    add eax, 50
+    mov speed, eax
+    jmp done
+bonusFoodEaten:
+    add score, 5
+done:
+    ret
+EatingCoin ENDP
+
+YouDied PROC
+    call Clrscr
+    call SetTextColor
+    
+    mov dl, 40
+    mov dh, 10
+    call Gotoxy
+    mov edx, OFFSET strGameOver
+    call WriteString
+    
+    mov dl, 40
+    mov dh, 12
+    call Gotoxy
+    mov edx, OFFSET strFinalScore
+    call WriteString
+    mov al, score
+    call WriteDec
+    
+    mov al, score
+    cmp al, highScore
+    jle noNewHighScore
+    
+    mov highScore, al
+    mov dl, 40
+    mov dh, 14
+    call Gotoxy
+    mov edx, OFFSET strNewHighScore
+    call WriteString
+    
+noNewHighScore:
+    mov dl, 40
+    mov dh, 16
+    call Gotoxy
+    mov edx, OFFSET strHighScore
+    call WriteString
+    mov al, highScore
+    call WriteDec
+    
+    mov dl, 40
+    mov dh, 18
+    call Gotoxy
+    mov edx, OFFSET strTryAgain
+    call WriteString
+    
+    call ReadChar
+    cmp al, "1"
+    je continue
+    cmp al, "0"
+    je exit
+    
+continue:
+    ret
+    
+exit:
+    INVOKE ExitProcess, 0
+YouDied ENDP
 
 ; Diğer fonksiyonlar burada
